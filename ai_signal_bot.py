@@ -4,7 +4,7 @@ import ccxt
 import pandas as pd
 import pandas_ta as ta
 import requests
-from datetime import datetime
+import time
 
 # === CONFIG ===
 TELEGRAM_TOKEN = "7936186728:AAGq3_O-T0MSyyYmDZ7AUDza8EZi83rFkI4"
