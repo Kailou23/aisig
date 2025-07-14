@@ -1,4 +1,4 @@
-✅ Crypto Signal Bot for Binance Futures (15m Scalping, 40 Pairs, Telegram Alerts Only, Confidence Scoring)
+Crypto Signal Bot for Binance Futures (15m Scalping, 40 Pairs, Telegram Alerts Only, Confidence Scoring)
 
 import ccxt import pandas as pd import pandas_ta as ta import time import requests from datetime import datetime
 
@@ -51,7 +51,7 @@ def analyze_symbol(symbol): try: ohlcv = exchange.fetch_ohlcv(symbol, timeframe=
     confidence = int((score / total) * 100)
 
     if confidence >= 75:
-        msg = f"\ud83d\ude80 BUY Signal\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI<30, MACD bullish, Price>EMA21, StochK<20\nConfidence: {confidence}%"
+        msg = f"[BUY SIGNAL]\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI<30, MACD bullish, Price>EMA21, StochK<20\nConfidence: {confidence}%"
         send_telegram(msg)
 
     # Sell signal components
@@ -68,7 +68,7 @@ def analyze_symbol(symbol): try: ohlcv = exchange.fetch_ohlcv(symbol, timeframe=
     confidence = int((score / total) * 100)
 
     if confidence >= 75:
-        msg = f"\ud83d\udd25 SELL Signal\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI>70, MACD bearish, Price<EMA21, StochK>80\nConfidence: {confidence}%"
+        msg = f"[SELL SIGNAL]\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI>70, MACD bearish, Price<EMA21, StochK>80\nConfidence: {confidence}%"
         send_telegram(msg)
 
 except Exception as e:
