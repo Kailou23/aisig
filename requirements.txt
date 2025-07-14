@@ -1,6 +1,4 @@
 ccxt
 pandas
-pandas_ta
+pandas-ta
 requests
-numpy==1.24.3
-setuptools>=65.0.0
