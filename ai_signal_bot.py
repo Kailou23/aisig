@@ -1,114 +1,82 @@
-# ✅ AI Signal Bot with HTF+LTF, SL/TP, Trailing Stop, Volatility Filter (Render-ready)
+✅ Crypto Signal Bot for Binance Futures (15m Scalping, 40 Pairs, Telegram Alerts Only, Confidence Scoring)
 
-import ccxt
-import pandas as pd
-import pandas_ta as ta
-import requests
-import time
+import ccxt import pandas as pd import pandas_ta as ta import time import requests from datetime import datetime
 
-# === CONFIG ===
-TELEGRAM_TOKEN = "7936186728:AAGq3_O-T0MSyyYmDZ7AUDza8EZi83rFkI4"
-TELEGRAM_CHAT_ID = "6684603246"
-SYMBOLS = [
-    "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
-    "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "DOT/USDT", "MATIC/USDT",
-    "SHIB/USDT", "LTC/USDT", "TRX/USDT", "LINK/USDT", "NEAR/USDT",
-    "ATOM/USDT", "OP/USDT", "ARB/USDT", "INJ/USDT", "RNDR/USDT",
-    "AAVE/USDT", "GRT/USDT", "SAND/USDT", "MANA/USDT", "AXS/USDT",
-    "FLOW/USDT", "IMX/USDT", "DYDX/USDT", "PEPE/USDT", "STX/USDT",
-    "FTM/USDT", "TWT/USDT", "CRV/USDT", "LDO/USDT", "COMP/USDT",
-    "COTI/USDT", "KAVA/USDT", "CAKE/USDT", "ALGO/USDT", "CHZ/USDT",
-    "GALA/USDT", "RUNE/USDT", "1000FLOKI/USDT", "1000SATS/USDT", "1000BONK/USDT"
-]
-LTF = "15m"  # Entry timeframe
-HTF = "4h"    # Trend timeframe
-ATR_LEN = 14
-RISK_MULTIPLIER = 1.5  # for SL, TP
-MIN_CONFIDENCE = 3
+=== CONFIGURATION ===
 
-# === FUNCTIONS ===
-def send_telegram(message):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    requests.post(url, data=payload)
+TELEGRAM_TOKEN = '7936186728:AAGq3_O-T0MSyyYmDZ7AUDza8EZi83rFkI4' CHAT_ID = '6684603246' TIMEFRAME = '15m' LIMIT = 150
 
-def fetch_ohlcv(symbol, timeframe, limit=100):
-    exchange = ccxt.binance()
-    bars = exchange.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-    df = pd.DataFrame(bars, columns=["timestamp", "open", "high", "low", "close", "volume"])
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-    return df
+=== 40 Binance Futures Pairs (You can modify this list) ===
 
-def add_indicators(df):
-    df.ta.ema(length=20, append=True)
+symbols = [ 'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'DOT/USDT', 'MATIC/USDT', 'LTC/USDT', 'BCH/USDT', 'UNI/USDT', 'LINK/USDT', 'ATOM/USDT', 'FIL/USDT', 'ETC/USDT', 'NEAR/USDT', 'OP/USDT', 'APE/USDT', 'SAND/USDT', 'MANA/USDT', 'AAVE/USDT', 'AR/USDT', 'XTZ/USDT', 'RNDR/USDT', 'GALA/USDT', 'DYDX/USDT', '1000PEPE/USDT', '1000SHIB/USDT', 'BLUR/USDT', 'WOO/USDT', 'XLM/USDT', 'TRX/USDT', 'IMX/USDT', 'RUNE/USDT', 'COTI/USDT', 'LDO/USDT', 'FET/USDT', 'INJ/USDT' ]
+
+exchange = ccxt.binance({"enableRateLimit": True}) exchange.set_sandbox_mode(False)
+
+=== Send Telegram Message ===
+
+def send_telegram(message): url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage" payload = {"chat_id": CHAT_ID, "text": message} requests.post(url, data=payload)
+
+=== Analyze Market ===
+
+def analyze_symbol(symbol): try: ohlcv = exchange.fetch_ohlcv(symbol, timeframe=TIMEFRAME, limit=LIMIT) df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']) df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+
+# Add indicators
+    df.ta.ema(length=9, append=True)
+    df.ta.ema(length=21, append=True)
     df.ta.ema(length=50, append=True)
     df.ta.rsi(length=14, append=True)
     df.ta.macd(append=True)
-    df.ta.atr(length=ATR_LEN, append=True)
-    return df
+    df.ta.stoch(append=True)
+    df.ta.cci(append=True)
+    df.ta.atr(length=14, append=True)
+    df.ta.bbands(append=True)
+    df.ta.adx(append=True)
 
-def is_trending_up(df):
     latest = df.iloc[-1]
-    return latest["EMA_20"] > latest["EMA_50"] and latest["MACDh_12_26_9"] > 0
 
-def is_trending_down(df):
-    latest = df.iloc[-1]
-    return latest["EMA_20"] < latest["EMA_50"] and latest["MACDh_12_26_9"] < 0
+    # Confidence scoring system
+    score = 0
+    total = 4
 
-def volatility_ok(df):
-    atr = df["ATR_14"].iloc[-1]
-    body = abs(df["close"].iloc[-1] - df["open"].iloc[-1])
-    return body >= 0.4 * atr  # avoid chop
+    # Buy signal components
+    if latest['RSI_14'] < 30:
+        score += 1
+    if latest['MACDh_12_26_9'] > 0:
+        score += 1
+    if latest['close'] > latest['EMA_21']:
+        score += 1
+    if latest['STOCHk_14_3_3'] < 20:
+        score += 1
 
-def analyze_pair(symbol):
-    try:
-        df_htf = add_indicators(fetch_ohlcv(symbol, HTF))
-        df_ltf = add_indicators(fetch_ohlcv(symbol, LTF))
-        trend_up = is_trending_up(df_htf)
-        trend_down = is_trending_down(df_htf)
-        if not volatility_ok(df_ltf):
-            return None  # Skip if not volatile
+    confidence = int((score / total) * 100)
 
-        latest = df_ltf.iloc[-1]
-        score = 0
-        if trend_up and latest["EMA_20"] > latest["EMA_50"]: score += 1
-        if trend_down and latest["EMA_20"] < latest["EMA_50"]: score += 1
-        if latest["RSI_14"] > 55 or latest["RSI_14"] < 45: score += 1
-        if (trend_up and latest["MACDh_12_26_9"] > 0) or (trend_down and latest["MACDh_12_26_9"] < 0): score += 1
-
-        if score < MIN_CONFIDENCE:
-            return None
-
-        atr = latest["ATR_14"]
-        price = latest["close"]
-        direction = "BUY" if trend_up else "SELL"
-
-        if direction == "BUY":
-            sl = price - RISK_MULTIPLIER * atr
-            tp = price + RISK_MULTIPLIER * atr
-            trail = price - 0.5 * atr
-        else:
-            sl = price + RISK_MULTIPLIER * atr
-            tp = price - RISK_MULTIPLIER * atr
-            trail = price + 0.5 * atr
-
-        return f"{symbol} | {direction} \nPrice: {price:.2f}\nSL: {sl:.2f}\nTP: {tp:.2f}\nTrail: {trail:.2f}\nScore: {score}/4"
-
-    except Exception as e:
-        return f"⚠️ Error on {symbol}: {e}"
-
-def main():
-    results = []
-    for symbol in SYMBOLS:
-        result = analyze_pair(symbol)
-        if result:
-            results.append(result)
-
-    if results:
-        msg = f"📈 AI Pro Signals ({datetime.now().strftime('%H:%M')}):\n\n" + "\n\n".join(results)
+    if confidence >= 75:
+        msg = f"\ud83d\ude80 BUY Signal\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI<30, MACD bullish, Price>EMA21, StochK<20\nConfidence: {confidence}%"
         send_telegram(msg)
-    else:
-        print("No valid trades.")
 
-if __name__ == "__main__":
-    main()
+    # Sell signal components
+    score = 0
+    if latest['RSI_14'] > 70:
+        score += 1
+    if latest['MACDh_12_26_9'] < 0:
+        score += 1
+    if latest['close'] < latest['EMA_21']:
+        score += 1
+    if latest['STOCHk_14_3_3'] > 80:
+        score += 1
+
+    confidence = int((score / total) * 100)
+
+    if confidence >= 75:
+        msg = f"\ud83d\udd25 SELL Signal\nSymbol: {symbol}\nTimeframe: {TIMEFRAME}\nPrice: {latest['close']:.2f}\nIndicators: RSI>70, MACD bearish, Price<EMA21, StochK>80\nConfidence: {confidence}%"
+        send_telegram(msg)
+
+except Exception as e:
+    print(f"Error for {symbol}: {e}")
+
+=== Main Loop ===
+
+def run(): for symbol in symbols: market = symbol.replace("/", ":") analyze_symbol(market) time.sleep(1.2)  # Respect rate limit
+
+if name == "main": run()
+
